@@ -1,0 +1,56 @@
+
+name: Build HALAF TV Launcher
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract app.zip
+        run: |
+          mkdir -p /tmp/halaf_app
+          unzip -q app.zip -d /tmp/halaf_app
+
+          if [ -d /tmp/halaf_app/app ]; then
+            SOURCE=/tmp/halaf_app/app
+          elif [ -f /tmp/halaf_app/build.gradle.kts ]; then
+            SOURCE=/tmp/halaf_app
+          else
+            FILE=$(find /tmp/halaf_app -name build.gradle.kts | head -n 1)
+            SOURCE=$(dirname "$FILE")
+          fi
+
+          mkdir -p app
+          cp -R "$SOURCE"/. app/
+
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HALAF-TV-Launcher-debug
+          path: app/build/outputs/apk/debug/*.apk
